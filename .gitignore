@@ -1,0 +1,102 @@
+# ============================================
+# KAN-RL Double Pendulum - Git Ignore
+# ============================================
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ===== Virtual Environments =====
+venv/
+ENV/
+env/
+.venv/
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ===== Jupyter Notebook =====
+.ipynb_checkpoints/
+*.ipynb
+
+# ===== Model Checkpoints (Large Files) =====
+checkpoints/*.pt
+checkpoints/*.pth
+checkpoints/*.ckpt
+!checkpoints/.gitkeep
+
+# ===== Data Files =====
+data/*.pt
+data/*.pth
+data/*.npy
+data/*.npz
+data/*.pkl
+data/*.pickle
+!data/.gitkeep
+
+# ===== Logs =====
+logs/*.log
+logs/*.txt
+logs/events.out.tfevents.*
+tensorboard_logs/
+runs/
+!logs/.gitkeep
+
+# ===== Results (Generated Files) =====
+# 保留图像文件用于 README 展示
+# results/*.png
+# results/*.pdf
+results/*.jpg
+results/*.jpeg
+results/*.svg
+!results/.gitkeep
+
+# ===== Temporary Files =====
+*.tmp
+*.temp
+temp/
+tmp/
+*.bak
+
+# ===== OS Generated =====
+Thumbs.db
+.DS_Store
+*.stackdump
+
+# ===== Testing =====
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# ===== MyPy =====
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ===== Profiling =====
+*.prof

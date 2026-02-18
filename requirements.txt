@@ -1,0 +1,25 @@
+# ============================================
+# KAN-RL Double Pendulum 项目依赖
+# 适用于: RTX 3050Ti (4GB VRAM)
+# ============================================
+
+# ===== 深度学习框架 (GPU版本) =====
+# 注意: 需要单独安装 PyTorch CUDA 版本
+# pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu118
+
+# ===== 科学计算 (注意: 需要 numpy<2 避免与 torch 冲突) =====
+numpy>=1.24.0,<2.0
+scipy>=1.10.0
+sympy>=1.12
+
+# ===== 强化学习环境 =====
+gymnasium>=0.29.0
+
+# ===== 可视化与日志 =====
+matplotlib>=3.7.0
+tensorboard>=2.13.0
+tqdm>=4.65.0
+
+# ===== 数据处理 =====
+pandas>=2.0.0
+pyyaml>=6.0

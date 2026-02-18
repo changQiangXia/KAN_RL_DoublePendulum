@@ -1,0 +1,217 @@
+# ============================================
+# KAN-RL Double Pendulum 全局超参数配置
+# 硬件约束: RTX 3050Ti (4GB VRAM)
+# ============================================
+
+# 随机种子
+seed: 42
+
+# ============================================
+# 环境配置 (Gymnasium Acrobot-v1 连续控制)
+# ============================================
+env:
+  name: "Acrobot-v1"
+  max_episode_steps: 500
+  # 原始状态: [cos(theta1), sin(theta1), cos(theta2), sin(theta2), dot_theta1, dot_theta2]
+  # 注意: Gymnasium Acrobot 原始输出已经是三角函数形式，但为了统一接口保留此配置
+  # 若使用自定义双摆环境，需要开启角度到三角函数的转换
+  use_angle_transform: false  # Gymnasium 原生环境已提供三角函数特征
+  
+# ============================================
+# KAN 网络架构 (极简设计以保证可解释性)
+# ============================================
+model:
+  # 网络拓扑: [输入维度, 隐藏层维度, 输出维度]
+  # 输入: [cos1, sin1, cos2, sin2, dot1, dot2] = 6维
+  # 隐藏: 8个节点 (控制可解释性)
+  # 输出: 1维连续扭矩
+  layers: [6, 8, 1]
+  
+  # B-spline 网格大小 (小网格节省显存)
+  grid_size: 5
+  
+  # B-spline 阶数 (通常 3 为三次样条)
+  spline_order: 3
+  
+  # 激活函数缩放因子
+  scale_noise: 0.1
+  
+  # 网格更新频率 (每N个epoch更新一次)
+  grid_update_freq: 10
+  
+  # 网格更新样本数 (用于计算新网格的数据样本)
+  grid_update_samples: 2048
+
+# ============================================
+# 行为克隆 (BC) 冷启动配置
+# ============================================
+bc:
+  # 专家数据路径
+  expert_data_path: "data/expert_trajectories.pt"
+  
+  # 训练轮数 (由人类在本地执行)
+  epochs: 200
+  
+  # 批次大小 (4GB显存安全值)
+  batch_size: 128
+  
+  # 学习率
+  lr: 1e-3
+  
+  # L1 稀疏化惩罚系数 (用于后期符号提取)
+  l1_penalty: 1e-4
+  
+  # 梯度裁剪阈值
+  grad_clip: 1.0
+  
+  # 验证集比例
+  val_split: 0.1
+  
+  # 早停耐心值
+  early_stop_patience: 20
+  
+  # 模型保存路径
+  save_path: "checkpoints/bc_kan_model.pt"
+
+# ============================================
+# PPO 强化学习配置 (调优后)
+# ============================================
+ppo:
+  # 训练轮数 (增加训练步数)
+  total_timesteps: 500000
+  
+  # 每次收集的步数 (增加数据量)
+  n_steps: 4096
+  
+  # 小批次大小 (4GB显存安全值)
+  mini_batch_size: 64
+  
+  # PPO epoch数
+  ppo_epochs: 10
+  
+  # 学习率 (降低以稳定训练)
+  lr: 1e-4
+  
+  # GAE lambda
+  gae_lambda: 0.95
+  
+  # 折扣因子
+  gamma: 0.99
+  
+  # 裁剪系数 epsilon
+  clip_range: 0.2
+  
+  # 价值函数系数
+  vf_coef: 0.5
+  
+  # 熵奖励系数 (增加以鼓励探索)
+  ent_coef: 0.05
+  
+  # L1 稀疏化惩罚系数
+  l1_penalty: 1e-5
+  
+  # 梯度裁剪阈值
+  grad_clip: 0.5
+  
+  # 模型保存路径
+  save_path: "checkpoints/ppo_kan_model_v2.pt"
+
+# ============================================
+# DAgger 配置
+# ============================================
+dagger:
+  n_iterations: 30          # 增加迭代次数
+  steps_per_iter: 20000     # 增加每轮收集步数
+  bc_epochs: 100            # 增加 BC 训练轮数
+  save_path: "checkpoints/dagger_kan_model_v2.pt"
+
+# ============================================
+# SAC 强化学习配置
+# ============================================
+sac:
+  # 训练步数
+  total_timesteps: 100000
+  
+  # 经验回放缓冲区大小
+  buffer_size: 100000
+  
+  # 批次大小
+  batch_size: 64
+  
+  # 学习率
+  lr: 3e-4
+  
+  # 折扣因子
+  gamma: 0.99
+  
+  # 软更新系数
+  tau: 0.005
+  
+  # 熵温度 (若 automatic_entropy_tuning=false)
+  alpha: 0.2
+  
+  # 自适应熵调节
+  automatic_entropy_tuning: true
+  
+  # 预热步数 (随机动作)
+  warmup_steps: 1000
+  
+  # 更新频率
+  update_every: 1
+  
+  # L1 稀疏化惩罚
+  l1_penalty: 1e-5
+  
+  # 梯度裁剪
+  grad_clip: 0.5
+  
+  # 模型保存路径
+  save_path: "checkpoints/sac_kan_model.pt"
+
+# ============================================
+# 专家数据生成配置
+# ============================================
+expert:
+  # 使用的专家算法: "lqr", "mlp_ppo", "random"
+  algorithm: "mlp_ppo"
+  
+  # 专家模型路径 (若使用预训练MLP-PPO)
+  model_path: "checkpoints/expert_mlp_ppo.pt"
+  
+  # 生成轨迹数量
+  n_trajectories: 1000
+  
+  # 每条轨迹最大步数
+  max_steps: 500
+  
+  # 输出保存路径
+  save_path: "data/expert_trajectories.pt"
+
+# ============================================
+# 日志与可视化
+# ============================================
+logging:
+  # 日志级别: DEBUG, INFO, WARNING, ERROR
+  level: "INFO"
+  
+  # 日志目录
+  log_dir: "logs"
+  
+  # TensorBoard 日志
+  use_tensorboard: true
+  
+  # 记录频率
+  log_interval: 10
+
+# ============================================
+# 符号化提取 (SymPy) 配置
+# ============================================
+symbolic:
+  # 稀疏化阈值 (低于此值的权重视为0)
+  sparsity_threshold: 0.01
+  
+  # 变量名称映射
+  var_names: ["c1", "s1", "c2", "s2", "d1", "d2"]
+  
+  # 输出公式文件路径
+  output_path: "results/symbolic_formula.py"
