@@ -72,7 +72,7 @@
 
 ```bash
 # 1. 克隆仓库（或下载ZIP解压）
-git clone https://github.com/your-username/kan-rl-double-pendulum.git
+git clone https://github.com/changQiangXia/KAN_RL_DoublePendulum.git
 cd kan-rl-double-pendulum
 
 # 2. 创建 conda 环境
