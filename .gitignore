@@ -81,6 +81,9 @@ temp/
 tmp/
 *.bak
 
+# ===== Tutorial Document (Private) =====
+TUTORIAL.md
+
 # ===== OS Generated =====
 Thumbs.db
 .DS_Store

@@ -6,6 +6,8 @@
 
 ![算法对比](results/algorithm_comparison.png)
 
+> **上图说明**：本项目对比了5种算法的性能。你可以通过下方[复现指南](#快速开始)训练出自己的模型，生成类似的对比图。
+
 ---
 
 ## 项目概述
@@ -26,6 +28,19 @@
 - SAC 是唯一**超越专家**的算法（快 27%，195 步 vs 267 步）
 - KAN 网络在 4GB 显存下成功训练，峰值占用 **< 10MB**
 - 网络稀疏化达 **43%**，可提取显式数学公式
+
+---
+
+## ⚠️ 重要提示：从 GitHub 下载后
+
+**GitHub 上的代码只包含源代码，不包含预训练模型和数据文件。**
+
+下载后你需要：
+1. **安装依赖**（约10分钟）
+2. **运行训练脚本**生成模型（约1-4小时，取决于你想训练哪些算法）
+3. **评估和可视化**（约10分钟）
+
+下方[快速开始](#快速开始)提供了详细的从零复现指南。
 
 ---
 
@@ -53,41 +68,192 @@
 
 ## 快速开始
 
-### 环境配置
+### 第一步：环境配置（10分钟）
 
 ```bash
-# 创建 conda 环境
+# 1. 克隆仓库（或下载ZIP解压）
+git clone https://github.com/your-username/kan-rl-double-pendulum.git
+cd kan-rl-double-pendulum
+
+# 2. 创建 conda 环境
 conda create -n kan_rl python=3.10 -y
 conda activate kan_rl
 
-# 安装 PyTorch (CUDA 11.8)
+# 3. 安装 PyTorch (CUDA 11.8)
 pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu118
 
-# 安装依赖
+# 4. 安装其他依赖
 pip install -r requirements.txt
 ```
 
-### 评估最佳策略（SAC）
+### 第二步：精简复现（约1小时，推荐）
+
+如果你时间有限，建议只训练 **BC + SAC**，即可体验核心内容：
 
 ```bash
-python scripts/evaluate.py --model checkpoints/sac_kan_model.pt --n_episodes 100
-```
+# 1. 生成专家数据（1分钟）
+python scripts/1_generate_expert.py --algorithm heuristic --n_trajectories 1000
+# 输出：data/expert_trajectories.pt（约8MB）
 
-### 查看符号化公式
+# 2. 训练 BC（2分钟）
+python scripts/2_train_bc.py
+# 输出：checkpoints/bc_kan_model.pt, checkpoints/bc_kan_model_history.pt
 
-```bash
-# BC 策略公式
-cat results/symbolic_formula.py
+# 3. 训练 SAC（约56分钟）
+python scripts/4_train_sac.py --total_timesteps 100000
+# 输出：checkpoints/sac_kan_model.pt, checkpoints/sac_kan_model_history.pt
 
-# SAC 策略公式
-cat results/sac_symbolic_formula.py
-```
+# 4. 评估对比（5分钟）
+python scripts/evaluate.py --model checkpoints/bc_kan_model.pt --n_episodes 50
+python scripts/evaluate.py --model checkpoints/sac_kan_model.pt --n_episodes 50
 
-### 生成对比可视化
-
-```bash
+# 5. 生成对比图
 python scripts/plot_comparison.py
+# 输出：results/algorithm_comparison.png（BC vs SAC 对比）
 ```
+
+**预期效果**：
+- BC：奖励 -400 ~ -450，成功率 80-90%
+- SAC：奖励 -180 ~ -220，成功率 90-96%
+
+### 第三步：完整复现（约4小时，生成五算法对比图）
+
+如果你想生成与本项目完全相同的五算法对比图：
+
+```bash
+# 在精简复现的基础上，继续训练：
+
+# 4. 训练 PPO（约60分钟）
+python scripts/3_train_ppo.py --bc_checkpoint checkpoints/bc_kan_model.pt --total_timesteps 500000
+
+# 5. 训练 DAgger（约90分钟）
+python scripts/5_train_dagger.py --expert_algorithm heuristic --n_iterations 10 --steps_per_iter 10000 --bc_epochs 50
+
+# 6. 生成完整对比图
+python scripts/plot_comparison.py
+# 输出：results/algorithm_comparison.png（五算法完整对比）
+```
+
+### 提取符号化公式
+
+```bash
+# 提取 BC 策略公式
+python utils/symbolic.py
+# 输出：results/symbolic_formula.py
+
+# 提取 SAC 策略公式
+python scripts/extract_sac_symbolic.py
+# 输出：results/sac_symbolic_formula.py
+```
+
+---
+
+## 项目结构
+
+从 GitHub 下载后，项目包含以下内容：
+
+```
+kan_rl_double_pendulum/
+├── 📁 checkpoints/          # 存放训练好的模型（初始为空，训练后生成）
+│   └── .gitkeep            # 保持目录存在
+├── 📁 data/                 # 存放专家数据（初始为空，运行1_generate后生成）
+│   └── .gitkeep
+├── 📁 logs/                 # 存放训练日志（初始为空）
+│   └── .gitkeep
+├── 📁 results/              # 存放生成的图像和公式（初始为空或含示例图）
+│   ├── algorithm_comparison.png    # 算法对比图（运行plot_comparison后生成）
+│   └── .gitkeep
+├── 📁 models/               # 📦 源代码：KAN网络实现
+│   └── kan_policy.py
+├── 📁 agents/               # 📦 源代码：训练算法实现
+│   ├── bc_agent.py
+│   ├── ppo_agent.py
+│   ├── sac_agent.py
+│   └── dagger_agent.py
+├── 📁 scripts/              # 📦 源代码：训练和评估脚本
+│   ├── 1_generate_expert.py
+│   ├── 2_train_bc.py
+│   ├── 3_train_ppo.py
+│   ├── 4_train_sac.py
+│   ├── 5_train_dagger.py
+│   ├── evaluate.py
+│   ├── extract_sac_symbolic.py
+│   └── plot_comparison.py
+├── 📁 envs/                 # 📦 源代码：环境包装器
+│   └── wrapper.py
+├── 📁 utils/                # 📦 源代码：工具函数
+│   └── symbolic.py
+├── 📄 config.yaml           # 全局超参数配置
+├── 📄 requirements.txt      # Python依赖列表
+├── 📄 .gitignore           # Git忽略配置
+└── 📄 README.md            # 本文件（你正在阅读）
+
+图例：
+- 📦 自带文件（下载后立即存在）
+- 📁 目录（部分初始为空，训练后填充）
+- 📄 配置文件
+```
+
+---
+
+## FAQ
+
+### Q1: 运行 `evaluate.py` 提示模型文件不存在？
+
+**错误信息**：
+```
+FileNotFoundError: checkpoints/sac_kan_model.pt not found
+```
+
+**原因**：GitHub下载的代码不包含预训练模型，你需要先运行训练脚本。
+
+**解决**：按照[快速开始](#快速开始)的步骤先训练模型。
+
+---
+
+### Q2: 训练时间比预期长？
+
+**原因**：训练时间取决于GPU性能。RTX 3050Ti约56分钟，CPU训练会更慢。
+
+**解决**：可以减少训练步数快速体验：
+```bash
+# SAC 只训练5万步（约30分钟）
+python scripts/4_train_sac.py --total_timesteps 50000
+```
+
+---
+
+### Q3: 出现 `CUDA out of memory`？
+
+**原因**：显存不足（虽然本项目已针对4GB优化）。
+
+**解决**：修改 `config.yaml`，减小批次大小：
+```yaml
+bc:
+  batch_size: 32  # 从128改为32
+
+sac:
+  batch_size: 32  # 从64改为32
+```
+
+---
+
+### Q4: 结果和 README 中的不一致？
+
+**原因**：强化学习有随机性，每次训练结果会有波动。
+
+**正常范围**：
+- SAC：奖励 -180 ~ -220，成功率 90-96% 都属于正常
+- 如果差异过大，尝试增加训练步数或调整随机种子
+
+---
+
+### Q5: 我只想快速看看效果，不想训练？
+
+目前 GitHub 没有提供预训练模型下载。你有两个选择：
+
+1. **自己训练**（推荐）：按照精简复现流程，约1小时即可看到效果
+2. **查看示例图**：`results/algorithm_comparison.png` 展示了预期效果
 
 ---
 
@@ -135,12 +301,21 @@ SAC 是本项目表现最佳的算法：
 
 ### 提取的符号化公式
 
-**BC 策略核心公式**（简化）：
+训练完成后，你可以提取并查看KAN网络的符号化公式：
+
+```bash
+# 查看 BC 策略公式
+cat results/symbolic_formula.py
+
+# 查看 SAC 策略公式
+cat results/sac_symbolic_formula.py
+```
+
+**示例输出**（BC策略）：
 ```python
 # Layer 1: 6输入 -> 8隐藏
 h0 = 0.327*c1 + 1.285*s1 + 0.396*d1 + 0.267*d2 + ...
 h1 = 4.073*s2 + 0.269*c1 - 0.040*c2 + ...
-...
 
 # Layer 2: 8隐藏 -> 1输出
 action = tanh(1.634*h3 + 1.625*h7 + 1.446*h5 + ...)
@@ -169,84 +344,6 @@ action = tanh(1.634*h3 + 1.625*h7 + 1.446*h5 + ...)
 - 训练时施加 L1 正则
 - 鼓励权重归零
 - 便于符号公式提取
-
----
-
-## 项目结构
-
-```
-kan_rl_double_pendulum/
-├── checkpoints/
-│   ├── bc_kan_model.pt          # BC 最佳模型 (-439, 88%)
-│   ├── sac_kan_model.pt         # SAC 冠军模型 (-194, 96%) ⭐
-│   ├── ppo_kan_model_v2.pt      # PPO 调优版
-│   └── dagger_kan_model.pt      # DAgger 30轮
-├── results/
-│   ├── symbolic_formula.py      # BC 符号公式
-│   ├── sac_symbolic_formula.py  # SAC 符号公式
-│   ├── algorithm_comparison.png # 对比图
-│   └── sac_training_detail.png  # SAC 细节
-├── models/kan_policy.py         # KAN 核心实现
-├── agents/
-│   ├── bc_agent.py              # 行为克隆
-│   ├── ppo_agent.py             # PPO 实现
-│   ├── sac_agent.py             # SAC 实现 ⭐
-│   └── dagger_agent.py          # DAgger 实现
-├── scripts/
-│   ├── 1_generate_expert.py     # 专家数据生成
-│   ├── 2_train_bc.py            # BC 训练
-│   ├── 3_train_ppo.py           # PPO 训练
-│   ├── 4_train_sac.py           # SAC 训练 ⭐
-│   ├── 5_train_dagger.py        # DAgger 训练
-│   ├── evaluate.py              # 策略评估
-│   ├── extract_sac_symbolic.py  # SAC 符号提取
-│   └── plot_comparison.py       # 生成对比图
-├── config.yaml                  # 全局配置
-└── README.md                    # 本文件
-```
-
----
-
-## 使用指南
-
-### 训练流程
-
-```bash
-# 1. 生成专家数据
-python scripts/1_generate_expert.py --algorithm heuristic --n_trajectories 1000
-
-# 2. 训练 BC（快速基线）
-python scripts/2_train_bc.py
-
-# 3. 训练 SAC（推荐）
-python scripts/4_train_sac.py --total_timesteps 100000
-
-# 4. 训练 PPO
-python scripts/3_train_ppo.py --bc_checkpoint checkpoints/bc_kan_model.pt
-
-# 5. 训练 DAgger
-python scripts/5_train_dagger.py --expert_algorithm heuristic --n_iterations 10
-```
-
-### 评估策略
-
-```bash
-# 评估 SAC
-python scripts/evaluate.py --model checkpoints/sac_kan_model.pt --n_episodes 100
-
-# 评估 BC
-python scripts/evaluate.py --model checkpoints/bc_kan_model.pt --n_episodes 100
-```
-
-### 提取符号公式
-
-```bash
-# 提取 SAC 公式
-python scripts/extract_sac_symbolic.py
-
-# 提取 BC 公式
-python utils/symbolic.py
-```
 
 ---
 
@@ -281,8 +378,9 @@ python utils/symbolic.py
 
 - **GPU**: NVIDIA GeForce RTX 3050 Ti Laptop GPU (4GB VRAM)
 - **训练时间**: SAC ~56分钟, BC ~2分钟, PPO ~60分钟, DAgger ~90分钟
-- **完成日期**: 2024
+- **完成日期**: 2026
 
 ---
 
-**项目状态**：✅ 已完成，**SAC 策略 (-193.7, 96%)** 为最终推荐方案
+**项目状态**：✅ 已完成，**SAC 策略 (-193.7, 96%)** 为最终推荐方案  
+**复现难度**：⭐⭐☆☆☆（中等，按步骤操作即可）
