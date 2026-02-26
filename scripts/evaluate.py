@@ -23,6 +23,7 @@ from tqdm import tqdm
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from models.kan_policy import KANPolicy
+from agents.sac_agent import KANGaussianPolicy
 from envs.wrapper import make_acrobot_env
 
 
@@ -98,6 +99,61 @@ def evaluate_policy(
     }
 
 
+class SACPolicyWrapper:
+    """将 SAC 高斯策略适配为 evaluate_policy 所需接口。"""
+
+    def __init__(self, policy):
+        self.policy = policy
+
+    def eval(self):
+        self.policy.eval()
+
+    def get_action(self, state):
+        # 评估阶段使用确定性动作，减少额外采样噪声
+        return self.policy.get_action(state, deterministic=True)
+
+    def print_sparsity(self, threshold=0.01):
+        print("=" * 50)
+        print("SAC Policy 稀疏化统计暂未实现（仅 BC/PPO 提供详细稀疏化打印）")
+        print("=" * 50)
+
+
+def _build_policy_from_checkpoint(checkpoint, model_config, device):
+    """根据 checkpoint 键名自动构建并加载对应策略网络。"""
+    state_dict = checkpoint.get('policy_state_dict')
+    if state_dict is None:
+        raise KeyError("checkpoint 中缺少 policy_state_dict")
+
+    is_sac_policy = any(k.startswith('feature.') for k in state_dict.keys())
+
+    if is_sac_policy:
+        # SAC 配置优先读 state_dim/action_dim/hidden_dim，否则回退到 layers
+        layers = model_config.get('layers', [6, 8, 1])
+        state_dim = int(model_config.get('state_dim', layers[0]))
+        action_dim = int(model_config.get('action_dim', layers[2]))
+        hidden_dim = int(model_config.get('hidden_dim', layers[1]))
+        policy = KANGaussianPolicy(
+            state_dim=state_dim,
+            action_dim=action_dim,
+            hidden_dim=hidden_dim,
+            grid_size=int(model_config.get('grid_size', 5)),
+            spline_order=int(model_config.get('spline_order', 3)),
+        ).to(device)
+        policy.load_state_dict(state_dict)
+        return SACPolicyWrapper(policy), "SAC(KANGaussianPolicy)"
+
+    layers = model_config.get('layers', [6, 8, 1])
+    policy = KANPolicy(
+        input_dim=int(layers[0]),
+        hidden_dim=int(layers[1]),
+        output_dim=int(layers[2]),
+        grid_size=int(model_config.get('grid_size', 5)),
+        spline_order=int(model_config.get('spline_order', 3)),
+    ).to(device)
+    policy.load_state_dict(state_dict)
+    return policy, "KANPolicy(BC/PPO)"
+
+
 def main():
     parser = argparse.ArgumentParser(description="评估 KAN 策略")
     parser.add_argument(
@@ -154,20 +210,9 @@ def main():
     # 加载模型
     print(f"\n加载模型: {args.model}")
     model_config = config.get('model', {})
-    layers = model_config.get('layers', [6, 8, 1])
-    
-    policy = KANPolicy(
-        input_dim=int(layers[0]),
-        hidden_dim=int(layers[1]),
-        output_dim=int(layers[2]),
-        grid_size=int(model_config.get('grid_size', 5)),
-        spline_order=int(model_config.get('spline_order', 3)),
-    ).to(device)
-    
-    # 加载权重
     checkpoint = torch.load(args.model, map_location=device)
-    policy.load_state_dict(checkpoint['policy_state_dict'])
-    print(f"模型加载完成 (训练 epoch: {checkpoint.get('epoch', 'unknown')})")
+    policy, policy_type = _build_policy_from_checkpoint(checkpoint, model_config, device)
+    print(f"模型加载完成: {policy_type} (训练 epoch: {checkpoint.get('epoch', 'unknown')})")
     
     # 打印模型信息
     print("\n模型信息:")
@@ -211,7 +256,7 @@ def main():
             print(f"  当前平均奖励: {results['mean_reward']:.1f} ± {results['std_reward']:.1f}")
             print(f"  性能比例: {results['mean_reward'] / np.mean(expert_rewards):.1%}")
     
-    print("\n✅ 评估完成!")
+    print("\n[OK] 评估完成!")
 
 
 if __name__ == "__main__":

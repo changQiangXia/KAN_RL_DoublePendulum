@@ -6,7 +6,7 @@
 
 ![算法对比](results/algorithm_comparison.png)
 
-> **上图说明**：本项目对比了5种算法的性能。你可以通过下方[复现指南](#快速开始)训练出自己的模型，生成类似的对比图。
+> **上图说明**：本项目对比了5个对象（4种学习算法 + 1个专家基线）的性能。你可以通过下方[复现指南](#快速开始)训练出自己的模型，生成类似的对比图。
 
 ---
 
@@ -62,7 +62,7 @@
 **设计约束**（针对 RTX 3050Ti 4GB 显存）：
 - B-spline 网格大小：5（节省显存）
 - 批次大小：64（显存安全）
-- 参数总量：448（可解释性强）
+- 核心样条参数：448（用于稀疏化与符号提取）
 
 ---
 
@@ -73,7 +73,7 @@
 ```bash
 # 1. 克隆仓库（或下载ZIP解压）
 git clone https://github.com/changQiangXia/KAN_RL_DoublePendulum.git
-cd kan-rl-double-pendulum
+cd KAN_RL_DoublePendulum
 
 # 2. 创建 conda 环境
 conda create -n kan_rl python=3.10 -y
@@ -109,7 +109,7 @@ python scripts/evaluate.py --model checkpoints/sac_kan_model.pt --n_episodes 50
 
 # 5. 生成对比图
 python scripts/plot_comparison.py
-# 输出：results/algorithm_comparison.png（BC vs SAC 对比）
+# 输出：results/algorithm_comparison.png
 ```
 
 **预期效果**：
@@ -168,8 +168,7 @@ kan_rl_double_pendulum/
 ├── 📁 agents/               # 📦 源代码：训练算法实现
 │   ├── bc_agent.py
 │   ├── ppo_agent.py
-│   ├── sac_agent.py
-│   └── dagger_agent.py
+│   └── sac_agent.py
 ├── 📁 scripts/              # 📦 源代码：训练和评估脚本
 │   ├── 1_generate_expert.py
 │   ├── 2_train_bc.py
@@ -182,7 +181,8 @@ kan_rl_double_pendulum/
 ├── 📁 envs/                 # 📦 源代码：环境包装器
 │   └── wrapper.py
 ├── 📁 utils/                # 📦 源代码：工具函数
-│   └── symbolic.py
+│   ├── symbolic.py
+│   └── experts.py
 ├── 📄 config.yaml           # 全局超参数配置
 ├── 📄 requirements.txt      # Python依赖列表
 ├── 📄 .gitignore           # Git忽略配置
